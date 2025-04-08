@@ -6,16 +6,17 @@ from pymatgen.analysis.diffraction.tem import TEMCalculator
 from pymatgen.core.lattice import Lattice
 from pymatgen.core.structure import Structure
 
-def get_diffraction_pattern(material_id, zone_axis, api_key=None, voltage=200):
+def get_diffraction_pattern(material_id, zone_axis, api_key=None, voltage=200, max_range=20):
     """
     Retrieves a structure from Materials Project and generates a TEM diffraction pattern
-    for a specific zone axis.
+    for a specific zone axis, limited to a maximum range from the central beam.
 
     Args:
         material_id (str): The Materials Project ID (e.g., 'mp-149')
         zone_axis (list): The zone axis as a list of three integers [h, k, l]
         api_key (str, optional): Your Materials Project API key. If None, uses environment variable.
-        voltage (float, optional): Electron beam energy in keV. Default is 200 keV..
+        voltage (float, optional): Electron beam energy in keV. Default is 200 keV.
+        max_range (float, optional): Maximum range from center in nm⁻¹. Default is 20 nm⁻¹.
 
     Returns:
         tuple: (fig, ax) matplotlib figure and axis objects with the diffraction pattern
@@ -40,6 +41,16 @@ def get_diffraction_pattern(material_id, zone_axis, api_key=None, voltage=200):
     # Extract pattern data from the DataFrame
     pattern_data = pattern.to_dict('records')
 
+    # Filter patterns to be within the specified range
+    filtered_pattern_data = []
+    for dot in pattern_data:
+        x, y = dot['Position']
+        distance_from_center = np.sqrt(x**2 + y**2)
+        if distance_from_center <= max_range:
+            filtered_pattern_data.append(dot)
+    
+    pattern_data = filtered_pattern_data
+    
     # Scale factor for spot sizes
     intensities = [dot['Intensity (norm)'] for dot in pattern_data]
     max_intensity = max(intensities) if intensities else 1
@@ -68,35 +79,29 @@ def get_diffraction_pattern(material_id, zone_axis, api_key=None, voltage=200):
     ax.scatter(0, 0, s=200, c='black', marker='o')
     ax.text(0, 0.02, '000', ha='center', fontsize=8)
 
-    # Set plot limits
-    max_range = 4  # Default range
-    if pattern_data:
-        x_coords = [dot['Position'][0] for dot in pattern_data]
-        y_coords = [dot['Position'][1] for dot in pattern_data]
-        if x_coords and y_coords:
-            max_coord = max(max(abs(np.array(x_coords))), max(abs(np.array(y_coords))))
-            max_range = max_coord * 1.2
-
+    # Set plot limits to the specified max_range
     ax.set_xlim(-max_range, max_range)
     ax.set_ylim(-max_range, max_range)
 
     # Add labels and title
-    ax.set_xlabel('Distance (cm)')
-    ax.set_ylabel('Distance (cm)')
-    ax.set_title(f'TEM Diffraction Pattern for {structure.formula}\nZone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}]')
+    ax.set_xlabel('Distance (nm⁻¹)')
+    ax.set_ylabel('Distance (nm⁻¹)')
+    ax.set_title(f'TEM Diffraction Pattern for {structure.formula}\nZone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}] (Limited to {max_range} nm⁻¹)')
     ax.set_aspect('equal')
     ax.grid(True, linestyle='--', alpha=0.7)
 
     return fig, ax, pattern
 
-def get_diffraction_pattern_from_cif(cif_file, zone_axis, voltage=200):
+def get_diffraction_pattern_from_cif(cif_file, zone_axis, voltage=200, max_range=20):
     """
-    Generates a TEM diffraction pattern from a local CIF file for a specific zone axis.
+    Generates a TEM diffraction pattern from a local CIF file for a specific zone axis,
+    limited to a maximum range from the central beam.
 
     Args:
         cif_file (str): Path to the CIF file
         zone_axis (list): The zone axis as a list of three integers [h, k, l]
         voltage (float, optional): Electron beam energy in keV. Default is 200 keV.
+        max_range (float, optional): Maximum range from center in nm⁻¹. Default is 20 nm⁻¹.
 
     Returns:
         tuple: (fig, ax) matplotlib figure and axis objects with the diffraction pattern
@@ -119,6 +124,16 @@ def get_diffraction_pattern_from_cif(cif_file, zone_axis, voltage=200):
 
     # Extract pattern data
     pattern_data = pattern.to_dict('records')
+    
+    # Filter patterns to be within the specified range
+    filtered_pattern_data = []
+    for dot in pattern_data:
+        x, y = dot['Position']
+        distance_from_center = np.sqrt(x**2 + y**2)
+        if distance_from_center <= max_range:
+            filtered_pattern_data.append(dot)
+    
+    pattern_data = filtered_pattern_data
 
     # Scale factor for spot sizes
     intensities = [dot['Intensity (norm)'] for dot in pattern_data]
@@ -148,63 +163,31 @@ def get_diffraction_pattern_from_cif(cif_file, zone_axis, voltage=200):
     ax.scatter(0, 0, s=200, c='black', marker='o')
     ax.text(0, 0.02, '000', ha='center', fontsize=8)
 
-    # Set plot limits
-    max_range = 4  # Default range
-    if pattern_data:
-        x_coords = [dot['Position'][0] for dot in pattern_data]
-        y_coords = [dot['Position'][1] for dot in pattern_data]
-        if x_coords and y_coords:
-            max_coord = max(max(abs(np.array(x_coords))), max(abs(np.array(y_coords))))
-            max_range = max_coord * 1.2
-
+    # Set plot limits to the specified max_range
     ax.set_xlim(-max_range, max_range)
     ax.set_ylim(-max_range, max_range)
 
     # Add labels and title
-    ax.set_xlabel('Distance (cm)')
-    ax.set_ylabel('Distance (cm)')
+    ax.set_xlabel('Distance (nm⁻¹)')
+    ax.set_ylabel('Distance (nm⁻¹)')
     cif_name = cif_file.split('/')[-1].split('.')[0]
-    ax.set_title(f'TEM Diffraction Pattern for {cif_name}\nZone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}]')
+    ax.set_title(f'TEM Diffraction Pattern for {cif_name}\nZone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}] (Limited to {max_range} nm⁻¹)')
     ax.set_aspect('equal')
     ax.grid(True, linestyle='--', alpha=0.7)
 
     return fig, ax, pattern
 
-def download_and_save_cif(material_id, api_key=None, output_file=None):
+def generate_multiple_patterns(material_id, api_key=None, voltage=200, zone_axes=None, max_range=20):
     """
-    Downloads a CIF file from Materials Project and saves it locally.
-
-    Args:
-        material_id (str): The Materials Project ID (e.g., 'mp-149')
-        api_key (str, optional): Your Materials Project API key. If None, uses environment variable.
-        output_file (str, optional): Path to save the CIF file. If None, uses material_id.cif
-
-    Returns:
-        str: Path to the saved CIF file
-    """
-    if output_file is None:
-        output_file = f"{material_id}.cif"
-
-    # Get the structure from Materials Project
-    with MPRester(api_key) as mpr:
-        structure = mpr.get_structure_by_material_id(material_id)
-        print(f"Retrieved structure: {structure.formula}")
-
-        # Save as CIF
-        structure.to(filename=output_file)
-        print(f"Saved CIF file to: {output_file}")
-
-    return output_file
-
-def generate_multiple_patterns(material_id, api_key=None, voltage=200, zone_axes=None):
-    """
-    Generates multiple diffraction patterns for a material with different zone axes.
+    Generates multiple diffraction patterns for a material with different zone axes,
+    limited to a maximum range from the central beam.
 
     Args:
         material_id (str): The Materials Project ID (e.g., 'mp-149')
         api_key (str, optional): Your Materials Project API key. If None, uses environment variable.
         voltage (float, optional): Electron beam energy in keV. Default is 200 keV.
         zone_axes (list, optional): List of zone axes to use. If None, uses common axes.
+        max_range (float, optional): Maximum range from center in nm⁻¹. Default is 20 nm⁻¹.
 
     Returns:
         matplotlib figure with multiple diffraction patterns
@@ -241,6 +224,16 @@ def generate_multiple_patterns(material_id, api_key=None, voltage=200, zone_axes
 
         # Extract pattern data from the DataFrame
         pattern_data = pattern.to_dict('records')
+        
+        # Filter patterns to be within the specified range
+        filtered_pattern_data = []
+        for dot in pattern_data:
+            x, y = dot['Position']
+            distance_from_center = np.sqrt(x**2 + y**2)
+            if distance_from_center <= max_range:
+                filtered_pattern_data.append(dot)
+        
+        pattern_data = filtered_pattern_data
 
         # Scale factor for spot sizes
         intensities = [dot['Intensity (norm)'] for dot in pattern_data]
@@ -266,25 +259,12 @@ def generate_multiple_patterns(material_id, api_key=None, voltage=200, zone_axes
         # Add a central spot (direct beam)
         axs[i].scatter(0, 0, s=200, c='black', marker='o')
 
-        # Set plot limits
-        # Calculate appropriate plot limits based on spot positions
-        if pattern_data:
-            x_coords = [dot['Position'][0] for dot in pattern_data]
-            y_coords = [dot['Position'][1] for dot in pattern_data]
-            if x_coords and y_coords:
-                max_coord = max(max(abs(np.array(x_coords))), max(abs(np.array(y_coords))))
-                max_range = max_coord * 1.2
-                axs[i].set_xlim(-max_range, max_range)
-                axs[i].set_ylim(-max_range, max_range)
-            else:
-                axs[i].set_xlim(-4, 4)
-                axs[i].set_ylim(-4, 4)
-        else:
-            axs[i].set_xlim(-4, 4)
-            axs[i].set_ylim(-4, 4)
+        # Set plot limits to the specified max_range
+        axs[i].set_xlim(-max_range, max_range)
+        axs[i].set_ylim(-max_range, max_range)
 
         # Add labels and title
-        axs[i].set_title(f'Zone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}]')
+        axs[i].set_title(f'Zone Axis: [{zone_axis[0]} {zone_axis[1]} {zone_axis[2]}] (Limited to {max_range} nm⁻¹)')
         axs[i].set_aspect('equal')
         axs[i].grid(True, linestyle='--', alpha=0.7)
 
@@ -300,13 +280,13 @@ if __name__ == "__main__":
     zone_axis = [0, 0, 1]   # [001] zone axis
     api_key = "daOUQsZxLXFDwpCXnB0uBMoXiicXZ8nq"  # Replace with your Materials Project API key
 
-    fig, ax, pattern = get_diffraction_pattern(material_id, zone_axis, api_key)
+    fig, ax, pattern = get_diffraction_pattern(material_id, zone_axis, api_key, max_range=20)
     plt.show()
 
     # Optionally save the figure
-    fig.savefig(f"{material_id}_zone_{zone_axis[0]}{zone_axis[1]}{zone_axis[2]}.png", dpi=300)
+    #fig.savefig(f"{material_id}_zone_{zone_axis[0]}{zone_axis[1]}{zone_axis[2]}_20nm-1.png", dpi=300)
 
     # Example 2: Generate multiple diffraction patterns
-    fig2, axs = generate_multiple_patterns(material_id, api_key)
+    fig2, axs = generate_multiple_patterns(material_id, api_key, max_range=20)
     plt.show()
-    fig2.savefig(f"{material_id}_multiple_zones.png", dpi=300, bbox_inches='tight')
+    #fig2.savefig(f"{material_id}_multiple_zones_20nm-1.png", dpi=300, bbox_inches='tight')
