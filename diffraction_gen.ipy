@@ -98,11 +98,11 @@ def get_interactive_diffraction_pattern(material_id, zone_axis, api_key=None, vo
 
         # Label the spots with their Miller indices
         hkl_str = ''.join(c for c in str(hkl) if c.isdigit() or c == '-')
-        ax.text(x, y+0.05*max_range/20, hkl_str, ha='center', fontsize=8)
+        ax.text(x, y+0.55*max_range/20, hkl_str, ha='center', fontsize=12)
 
     # Add a central spot (direct beam)
     central_spot = ax.scatter(0, 0, s=200, c='black', marker='o', picker=5)
-    ax.text(0, 0.02*max_range/20, '000', ha='center', fontsize=8)
+    ax.text(0, 0.5*max_range/20, '000', ha='center', fontsize=12)
     spots_dict[central_spot] = {
         'hkl': '(0, 0, 0)',
         'intensity': 1.0,  # Normalized intensity for central beam
